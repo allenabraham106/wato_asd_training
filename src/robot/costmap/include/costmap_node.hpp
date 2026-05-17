@@ -24,7 +24,7 @@ class CostmapNode : public rclcpp::Node {
     double resolution_ = 0.1;
     int height_ = 100; 
     int width_ = 100;
-    double inflation_radius_ = 1.0;
+    double inflation_radius_ = 3.0;
     int max_cost_ = 90;
     robot::CostmapCore costmap_;
     std::vector<std::vector<int>> costmap_grid_;
