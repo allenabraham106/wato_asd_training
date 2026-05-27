@@ -6,8 +6,17 @@
  
 CostmapNode::CostmapNode() : Node("costmap"), costmap_(robot::CostmapCore(this->get_logger())) {
   // Initialize the constructs and their parameters
-  lidar_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/lidar", 10, std::bind(&CostmapNode::laserCallBack, this, std::placeholders::_1));
+  lidar_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
+    "/lidar",
+    10,
+    std::bind(&CostmapNode::laserCallBack, this, std::placeholders::_1)
+  );
   costmap_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap", 10);
+  odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+    "/odom/filtered",
+    10, 
+    std::bind(&CostmapNode::odomCallback, this, std::placeholders::_1)
+  );
 }
 
 void CostmapNode::initializeCostmap(){
@@ -15,8 +24,9 @@ void CostmapNode::initializeCostmap(){
 }
 
 void CostmapNode::convertToGrid(double range, double angle, int& x_grid, int& y_grid){
-  double x = range * cos(angle);
-  double y = range * sin(angle);
+  double world_angle = angle + robot_yaw_;
+  double x = range * cos(world_angle);
+  double y = range * sin(world_angle);
   x_grid = (x / resolution_) + width_/2;
   y_grid = (y / resolution_) + height_/2;
 }
@@ -65,6 +75,10 @@ void CostmapNode::publishCostmap(){
     }
   }
   msg.data = flat;
+
+  msg.info.origin.position.x = robot_x_ - (width_ * resolution_/2.0);
+  msg.info.origin.position.y = robot_y_ - (height_ * resolution_/2.0);
+  msg.info.origin.orientation.w = 1.0;
   costmap_pub_ -> publish(msg);
 }
 
@@ -89,6 +103,13 @@ void CostmapNode::laserCallBack(const sensor_msgs::msg::LaserScan::SharedPtr sca
  
     // Step 4: Publish costmap
     publishCostmap();
+}
+
+void CostmapNode::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg){
+  robot_x_ = msg->pose.pose.position.x;
+  robot_y_ = msg->pose.pose.position.y;
+  auto& q = msg->pose.pose.orientation;
+  robot_yaw_ = std::atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z));
 }
 
 

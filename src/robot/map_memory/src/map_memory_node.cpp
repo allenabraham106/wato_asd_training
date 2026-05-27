@@ -45,11 +45,14 @@ void MapMemoryNode::updateMap(){
 }
 
 void MapMemoryNode::initializeMap(){
-  global_map_.info.resolution = 0.1;
-  global_map_.info.width = 300;
-  global_map_.info.height = 300;
-  global_map_.data = std::vector<int8_t>(300 * 300, -1);
-  global_map_.header.frame_id = "sim_world";
+    global_map_.info.resolution = 0.1;
+    global_map_.info.width = 300;
+    global_map_.info.height = 300;
+    global_map_.data = std::vector<int8_t>(300 * 300, 0);
+    global_map_.header.frame_id = "sim_world";
+    global_map_.info.origin.position.x = -15.0;
+    global_map_.info.origin.position.y = -15.0;
+    global_map_.info.origin.orientation.w = 1.0;
 }
 
 void MapMemoryNode::integrateCostmap(){
