@@ -12,11 +12,6 @@ CostmapNode::CostmapNode() : Node("costmap"), costmap_(robot::CostmapCore(this->
     std::bind(&CostmapNode::laserCallBack, this, std::placeholders::_1)
   );
   costmap_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap", 10);
-  odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-    "/odom/filtered",
-    10, 
-    std::bind(&CostmapNode::odomCallback, this, std::placeholders::_1)
-  );
 }
 
 void CostmapNode::initializeCostmap(){
@@ -61,24 +56,23 @@ void CostmapNode::inflateObstacles(){
 }
 
 void CostmapNode::publishCostmap(){
-  nav_msgs::msg::OccupancyGrid msg;
-  msg.header.stamp= this->get_clock()->now();
-  msg.header.frame_id = "sim_world";
-  msg.info.resolution = resolution_;
-  msg.info.width = width_;
-  msg.info.height = height_;
-  std::vector<int8_t> flat;
-  for(int i = 0; i < height_; ++i){
-    for(int j = 0; j < width_; ++j){
-      flat.push_back(costmap_grid_[i][j]);
+    nav_msgs::msg::OccupancyGrid msg;
+    msg.header.stamp = this->get_clock()->now();
+    msg.header.frame_id = "robot/chassis/lidar";
+    msg.info.resolution = resolution_;
+    msg.info.width = width_;
+    msg.info.height = height_;
+    msg.info.origin.position.x = -(width_ * resolution_ / 2.0);
+    msg.info.origin.position.y = -(height_ * resolution_ / 2.0);
+    msg.info.origin.orientation.w = 1.0;
+    std::vector<int8_t> flat;
+    for(int i = 0; i < height_; ++i){
+        for(int j = 0; j < width_; ++j){
+            flat.push_back(costmap_grid_[i][j]);
+        }
     }
-  }
-  msg.data = flat;
-
-  msg.info.origin.position.x = robot_x_ - (width_ * resolution_/2.0);
-  msg.info.origin.position.y = robot_y_ - (height_ * resolution_/2.0);
-  msg.info.origin.orientation.w = 1.0;
-  costmap_pub_ -> publish(msg);
+    msg.data = flat;
+    costmap_pub_->publish(msg);
 }
 
 void CostmapNode::laserCallBack(const sensor_msgs::msg::LaserScan::SharedPtr scan) {
@@ -102,13 +96,6 @@ void CostmapNode::laserCallBack(const sensor_msgs::msg::LaserScan::SharedPtr sca
  
     // Step 4: Publish costmap
     publishCostmap();
-}
-
-void CostmapNode::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg){
-  robot_x_ = msg->pose.pose.position.x;
-  robot_y_ = msg->pose.pose.position.y;
-  auto& q = msg->pose.pose.orientation;
-  robot_yaw_ = std::atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z));
 }
 
 
