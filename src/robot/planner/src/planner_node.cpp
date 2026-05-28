@@ -139,7 +139,7 @@ void PlannerNode::planPath() {
         continue;
       }
       int cell_cost = current_map_.data[neighbor.y * 300 + neighbor.x];
-      if((cell_cost >= 100) || closed_set.count(neighbor)){
+      if((cell_cost > 50) || closed_set.count(neighbor)){
         continue;
       }
 

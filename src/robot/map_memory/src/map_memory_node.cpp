@@ -24,16 +24,17 @@ void MapMemoryNode::costmapCallback(const nav_msgs::msg::OccupancyGrid::SharedPt
 }
 
 void MapMemoryNode::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg){
-        double x = msg->pose.pose.position.x;
-        double y = msg->pose.pose.position.y;
- 
-        // Compute distance traveled
-        double distance = std::sqrt(std::pow(x - last_x_, 2) + std::pow(y - last_y_, 2));
-        if (distance >= distance_threshold_) {
-            last_x_ = x;
-            last_y_ = y;
-            should_update_map_ = true;
-        }
+    double x = msg->pose.pose.position.x;
+    double y = msg->pose.pose.position.y;
+    auto& q = msg->pose.pose.orientation;
+    last_yaw_ = std::atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z));
+
+    double distance = std::sqrt(std::pow(x - last_x_, 2) + std::pow(y - last_y_, 2));
+    if (distance >= distance_threshold_) {
+        last_x_ = x;
+        last_y_ = y;
+        should_update_map_ = true;
+    }
 }
 
 void MapMemoryNode::updateMap(){
@@ -56,23 +57,28 @@ void MapMemoryNode::initializeMap(){
 }
 
 void MapMemoryNode::integrateCostmap(){
-    // Transform and merge the latest costmap into the global map
-    // (Implementation would handle grid alignment and merging logic)
-    int robot_grid_x = (last_x_ / 0.1) + 150;
-    int robot_grid_y = (last_y_ / 0.1) + 150;
+    double cos_yaw = std::cos(last_yaw_);
+    double sin_yaw = std::sin(last_yaw_);
+    
     for(int i = 0; i < 100; ++i){
-      for(int j = 0; j < 100; ++j){
-        int global_x = robot_grid_x + (j - 50);
-        int global_y = robot_grid_y + (i - 50);
-        if(global_x >= 0 && global_x < 300 && global_y >= 0 && global_y < 300){
-          int costmap_value = latest_costmap_.data[i * latest_costmap_.info.width + j];
-          if(costmap_value != -1){
-            global_map_.data[global_y * global_map_.info.width + global_x] = costmap_value;
-          }
+        for(int j = 0; j < 100; ++j){
+            int costmap_value = latest_costmap_.data[i * 100 + j];
+            if(costmap_value > 0){  // store ALL non-zero values including inflation
+                double local_x = (j - 50) * 0.1;
+                double local_y = (i - 50) * 0.1;
+                
+                double world_x = last_x_ + cos_yaw * local_x - sin_yaw * local_y;
+                double world_y = last_y_ + sin_yaw * local_x + cos_yaw * local_y;
+                
+                int global_x = (world_x / 0.1) + 150;
+                int global_y = (world_y / 0.1) + 150;
+                
+                if(global_x >= 0 && global_x < 300 && global_y >= 0 && global_y < 300){
+                    global_map_.data[global_y * 300 + global_x] = costmap_value;
+                }
+            }
         }
-      }
     }
-
 }
 
 int main(int argc, char ** argv)

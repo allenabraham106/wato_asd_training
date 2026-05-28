@@ -24,9 +24,8 @@ void CostmapNode::initializeCostmap(){
 }
 
 void CostmapNode::convertToGrid(double range, double angle, int& x_grid, int& y_grid){
-  double world_angle = angle + robot_yaw_;
-  double x = range * cos(world_angle);
-  double y = range * sin(world_angle);
+  double x = range * cos(angle);
+  double y = range * sin(angle);
   x_grid = (x / resolution_) + width_/2;
   y_grid = (y / resolution_) + height_/2;
 }
